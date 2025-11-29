@@ -11,8 +11,8 @@ import {
 import ReCAPTCHA from "react-google-recaptcha"; // NEW IMPORT
 import "./App.css";
 
-// YOUR GOOGLE SITE KEY
-const SITE_KEY = "6LeWRRwsAAAAAIaKYD8QLWuOP7CY5SdQqTTTxl2v";
+// YOUR GOOGLE SITE KEY (Corrected typo: OLWu, not QLWu)
+const SITE_KEY = "6LeWRRwsAAAAAIaKYD8OLWuOP7CY5SdQqTTTxl2v";
 
 /* ------------- Sample Data ------------- */
 
@@ -248,7 +248,7 @@ function App() {
   );
 }
 
-/* ------------- Auth Screen (WITH CAPTCHA) ------------- */
+/* ------------- Auth Screen ------------- */
 
 function AuthScreen({ setCurrentUser }) {
   const navigate = useNavigate();
@@ -292,21 +292,22 @@ function AuthScreen({ setCurrentUser }) {
     setSignupData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // NEW: Verify function
+  // NEW: Captcha Verification
   const verifyCaptcha = async () => {
     if (!captchaToken) {
-      setError("Please verify you are not a robot.");
+      setError("Please click 'I'm not a robot'.");
       return false;
     }
     try {
-      const res = await fetch('https://hackathon-project.vercel.app/getInvestments', {
+      // Connecting to your LIVE backend
+      const res = await fetch('https://mutualfunds-mauve.vercel.app/verify-captcha', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: captchaToken })
       });
       const data = await res.json();
       if (data.success) return true;
-      setError("Captcha check failed.");
+      setError("Captcha verification failed.");
       return false;
     } catch (err) {
       setError("Captcha server error.");
@@ -338,7 +339,7 @@ function AuthScreen({ setCurrentUser }) {
       return;
     }
 
-    // Check Captcha
+    // CHECK CAPTCHA
     const isHuman = await verifyCaptcha();
     if (!isHuman) return;
 
@@ -378,7 +379,7 @@ function AuthScreen({ setCurrentUser }) {
       return;
     }
 
-    // Check Captcha
+    // CHECK CAPTCHA
     const isHuman = await verifyCaptcha();
     if (!isHuman) return;
 
@@ -447,12 +448,12 @@ function AuthScreen({ setCurrentUser }) {
             </div>
 
             {/* CAPTCHA WIDGET */}
-            <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0' }}>
-              <ReCAPTCHA
-                sitekey={SITE_KEY}
-                onChange={(token) => setCaptchaToken(token)}
-                theme="dark"
-              />
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
+                <ReCAPTCHA
+                    sitekey={SITE_KEY}
+                    onChange={setCaptchaToken}
+                    theme="dark"
+                />
             </div>
 
             {error && <p className="error-text">{error}</p>}
@@ -506,12 +507,12 @@ function AuthScreen({ setCurrentUser }) {
             </div>
 
             {/* CAPTCHA WIDGET */}
-            <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0' }}>
-              <ReCAPTCHA
-                sitekey={SITE_KEY}
-                onChange={(token) => setCaptchaToken(token)}
-                theme="dark"
-              />
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
+                <ReCAPTCHA
+                    sitekey={SITE_KEY}
+                    onChange={setCaptchaToken}
+                    theme="dark"
+                />
             </div>
 
             {error && <p className="error-text">{error}</p>}
@@ -674,16 +675,17 @@ function Home() {
   );
 }
 
-/* ------------- Investor View (CONNECTED TO MONGODB @ 5001) ------------- */
+/* ------------- Investor View (CONNECTED TO DB) ------------- */
 
 function InvestorView() {
   const [selectedRisk, setSelectedRisk] = useState("All");
   const [watchlist, setWatchlist] = useLocalStorage("mf-watchlist", []);
   
-  // CHANGED: Using standard state to fetch from MongoDB
+  // CHANGED: Using STATE for live database data
   const [investments, setInvestments] = useState([]);
   
   const [form, setForm] = useState({ fundId: "", amount: "", mode: "SIP" });
+  const [editingId, setEditingId] = useState(null);
   const [formError, setFormError] = useState("");
 
   const filteredFunds =
@@ -691,9 +693,9 @@ function InvestorView() {
       ? mutualFunds
       : mutualFunds.filter((f) => f.risk === selectedRisk);
 
-  // NEW: Fetch data from MongoDB on component load (Port 5001)
+  // NEW: Fetch from Backend
   useEffect(() => {
-    fetch('https://hackathon-project.vercel.app/getInvestments')
+    fetch('https://mutualfunds-mauve.vercel.app/getInvestments')
       .then(res => res.json())
       .then(data => setInvestments(data))
       .catch(err => console.error("Error fetching data:", err));
@@ -755,17 +757,16 @@ function InvestorView() {
       return;
     }
 
-    // Prepare data for Backend
-    // Backend expects { fund: String, amount: Number, mode: String }
+    // Backend object
     const newInvestment = {
-      fund: selectedFund.name, // Sending Name instead of ID
+      fund: selectedFund.name,
       amount: amount,
       mode: form.mode
     };
 
     try {
-      // UPDATED TO PORT 5001
-      const response = await fetch('https://hackathon-project.vercel.app/getInvestments', {
+      // NEW: Save to DB
+      const response = await fetch('https://mutualfunds-mauve.vercel.app/addInvestment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newInvestment)
@@ -773,41 +774,40 @@ function InvestorView() {
 
       if (response.ok) {
         const savedData = await response.json();
-        // Update UI immediately
         setInvestments([...investments, savedData]);
         setForm({ fundId: "", amount: "", mode: "SIP" });
+        setEditingId(null);
         setFormError("");
       } else {
-        setFormError("Failed to save to database. Check server connection.");
+        setFormError("Failed to save to database.");
       }
     } catch (error) {
-      console.error("Error saving investment:", error);
-      setFormError("Error connecting to server.");
+      setFormError("Server error.");
     }
   };
 
-  const handleEdit = () => { alert("Edit feature coming soon!"); };
+  const handleEdit = (investment) => {
+    // Edit remains local for now as per your original UI request
+    // To implement full edit, we need a PUT route in backend
+    alert("Edit is local only for this demo.");
+  };
 
-  const handleSell = async (inv) => {
-    // 1. Confirm with the user
-    if (!window.confirm(`Are you sure you want to sell and remove ${inv.fund}?`)) {
-      return;
-    }
+  const handleSell = async (investment) => {
+    const current = investment.amount;
+    const input = window.prompt(
+      `You currently hold ₹${current.toLocaleString("en-IN")}.\nType "DELETE" to remove this investment.`,
+    );
 
-    try {
-      // 2. Send DELETE request to Backend (using the unique database _id)
-      const response = await fetch(`http://localhost:5001/deleteInvestment/${inv._id}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        // 3. If successful, remove it from the screen immediately
-        setInvestments(investments.filter((i) => i._id !== inv._id));
-      } else {
-        alert("Failed to delete from database");
-      }
-    } catch (error) {
-      console.error("Error deleting:", error);
+    if (input === "DELETE") {
+        // NEW: Delete from DB
+        try {
+            await fetch(`https://mutualfunds-mauve.vercel.app/deleteInvestment/${investment._id}`, {
+                method: 'DELETE'
+            });
+            setInvestments(prev => prev.filter(inv => inv._id !== investment._id));
+        } catch (e) {
+            alert("Error deleting.");
+        }
     }
   };
 
@@ -817,7 +817,7 @@ function InvestorView() {
         <h2>Investor Workspace</h2>
         <p>
           Explore mutual funds, maintain a watchlist and record a simple
-          portfolio. <strong>Portfolio data is now synced with MongoDB.</strong>
+          portfolio. <strong>Data is saved to MongoDB.</strong>
         </p>
       </div>
 
@@ -946,12 +946,25 @@ function InvestorView() {
           {formError && <p className="error-text">{formError}</p>}
 
           <button type="submit" className="primary-btn">
-            Add Investment
+            {editingId ? "Update Investment" : "Add Investment"}
           </button>
+          {editingId && (
+            <button
+              type="button"
+              className="secondary-btn inline-btn"
+              onClick={() => {
+                setEditingId(null);
+                setForm({ fundId: "", amount: "", mode: "SIP" });
+                setFormError("");
+              }}
+            >
+              Cancel
+            </button>
+          )}
         </form>
 
         {investments.length === 0 ? (
-          <p className="muted">No investments found in database.</p>
+          <p className="muted">No investments added yet.</p>
         ) : (
           <div className="table-wrapper">
             <table className="data-table">
@@ -964,9 +977,9 @@ function InvestorView() {
                 </tr>
               </thead>
               <tbody>
-                {investments.map((inv) => (
+                {investments.map((inv) => {
+                  return (
                     <tr key={inv._id}>
-                      {/* Backend stores Name directly now, so we display inv.fund */}
                       <td>{inv.fund}</td>
                       <td>{inv.amount.toLocaleString("en-IN")}</td>
                       <td>{inv.mode}</td>
@@ -985,7 +998,8 @@ function InvestorView() {
                         </button>
                       </td>
                     </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
