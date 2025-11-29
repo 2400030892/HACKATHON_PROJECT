@@ -11,7 +11,8 @@ import {
 import ReCAPTCHA from "react-google-recaptcha"; // NEW IMPORT
 import "./App.css";
 
-// YOUR GOOGLE SITE KEY (Corrected typo: OLWu, not QLWu)
+// YOUR GOOGLE SITE KEY
+// (I corrected the typo from 'Q' to 'O' based on your previous screenshot so it works)
 const SITE_KEY = "6LeWRRwsAAAAAIaKYD8OLWuOP7CY5SdQqTTTxl2v";
 
 /* ------------- Sample Data ------------- */
@@ -248,7 +249,7 @@ function App() {
   );
 }
 
-/* ------------- Auth Screen ------------- */
+/* ------------- Auth Screen (WITH CAPTCHA) ------------- */
 
 function AuthScreen({ setCurrentUser }) {
   const navigate = useNavigate();
@@ -292,14 +293,14 @@ function AuthScreen({ setCurrentUser }) {
     setSignupData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // NEW: Captcha Verification
+  // NEW: Verify function talking to Vercel Backend
   const verifyCaptcha = async () => {
     if (!captchaToken) {
-      setError("Please click 'I'm not a robot'.");
+      setError("Please verify you are not a robot.");
       return false;
     }
     try {
-      // Connecting to your LIVE backend
+      // Connecting to your LIVE Vercel backend
       const res = await fetch('https://mutualfunds-mauve.vercel.app/verify-captcha', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -307,7 +308,7 @@ function AuthScreen({ setCurrentUser }) {
       });
       const data = await res.json();
       if (data.success) return true;
-      setError("Captcha verification failed.");
+      setError("Captcha check failed.");
       return false;
     } catch (err) {
       setError("Captcha server error.");
@@ -675,13 +676,13 @@ function Home() {
   );
 }
 
-/* ------------- Investor View (CONNECTED TO DB) ------------- */
+/* ------------- Investor View (CONNECTED TO DATABASE) ------------- */
 
 function InvestorView() {
   const [selectedRisk, setSelectedRisk] = useState("All");
   const [watchlist, setWatchlist] = useLocalStorage("mf-watchlist", []);
   
-  // CHANGED: Using STATE for live database data
+  // CHANGED: Using standard state to fetch from MongoDB
   const [investments, setInvestments] = useState([]);
   
   const [form, setForm] = useState({ fundId: "", amount: "", mode: "SIP" });
@@ -693,7 +694,7 @@ function InvestorView() {
       ? mutualFunds
       : mutualFunds.filter((f) => f.risk === selectedRisk);
 
-  // NEW: Fetch from Backend
+  // NEW: Fetch data from MongoDB on component load
   useEffect(() => {
     fetch('https://mutualfunds-mauve.vercel.app/getInvestments')
       .then(res => res.json())
@@ -787,8 +788,6 @@ function InvestorView() {
   };
 
   const handleEdit = (investment) => {
-    // Edit remains local for now as per your original UI request
-    // To implement full edit, we need a PUT route in backend
     alert("Edit is local only for this demo.");
   };
 
@@ -964,7 +963,7 @@ function InvestorView() {
         </form>
 
         {investments.length === 0 ? (
-          <p className="muted">No investments added yet.</p>
+          <p className="muted">No investments found in database.</p>
         ) : (
           <div className="table-wrapper">
             <table className="data-table">
@@ -980,6 +979,7 @@ function InvestorView() {
                 {investments.map((inv) => {
                   return (
                     <tr key={inv._id}>
+                      {/* Backend stores Name directly now, so we display inv.fund */}
                       <td>{inv.fund}</td>
                       <td>{inv.amount.toLocaleString("en-IN")}</td>
                       <td>{inv.mode}</td>
