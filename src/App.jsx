@@ -299,7 +299,7 @@ function AuthScreen({ setCurrentUser }) {
       return false;
     }
     try {
-      const res = await fetch('http://localhost:5001/verify-captcha', {
+      const res = await fetch('https://hackathon-project.vercel.app/getInvestments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: captchaToken })
@@ -693,7 +693,7 @@ function InvestorView() {
 
   // NEW: Fetch data from MongoDB on component load (Port 5001)
   useEffect(() => {
-    fetch('http://localhost:5001/getInvestments')
+    fetch('https://hackathon-project.vercel.app/getInvestments')
       .then(res => res.json())
       .then(data => setInvestments(data))
       .catch(err => console.error("Error fetching data:", err));
@@ -765,7 +765,7 @@ function InvestorView() {
 
     try {
       // UPDATED TO PORT 5001
-      const response = await fetch('http://localhost:5001/addInvestment', {
+      const response = await fetch('https://hackathon-project.vercel.app/getInvestments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newInvestment)
