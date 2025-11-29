@@ -79,5 +79,13 @@ app.post('/verify-captcha', async (req, res) => {
     }
 });
 
+
 const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => console.log(`Server running on ${PORT}`));
+
+// Only run the server if we are testing locally (not on Vercel)
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => console.log(`Server running on ${PORT}`));
+}
+
+// Export the app for Vercel
+module.exports = app;
