@@ -56,34 +56,34 @@ app.delete('/deleteInvestment/:id', async (req, res) => {
 });
 
 // 4. NEW: Verify Captcha (TEMPORARY BYPASS FOR DEBUGGING)
+// 4. NEW: Verify Captcha (FINAL VERSION)
 app.post('/verify-captcha', async (req, res) => {
-    // This function is temporarily disabled. It will always return success: true
-    // If you log in successfully now, the issue is 100% the SECRET KEY on Vercel.
-    
-    console.log("CAPTCHA BYPASS ACTIVE: Returning success: true for test.");
-    return res.json({ success: true, message: "Bypass success" }); 
-
-    /* ORIGINAL CODE BELOW:
     const { token } = req.body;
+    // REPLACE THE SECRET KEY HERE AGAIN. The slightest typo breaks this.
     const SECRET_KEY = "6LeWRRwsAAAAAO0ywXrMAriEMHZK3hxmWv-iqojE"; 
-    
-    if (!token) { return res.status(400).json({ success: false, message: "No token" }); }
+
+    if (!token) {
+        return res.status(400).json({ success: false, message: "No token" });
+    }
 
     try {
+        // Vercel sometimes rejects the connection if the secret is wrong.
         const response = await axios.post(
             `https://www.google.com/recaptcha/api/siteverify?secret=${SECRET_KEY}&response=${token}`
         );
+
         if (response.data.success) {
             res.json({ success: true, message: "Human verified!" });
         } else {
-            res.json({ success: false, message: "Bot detected!" });
+            // If Google returns failure (e.g., scoring too low)
+            res.json({ success: false, message: "Captcha check failed: Bot detected." });
         }
     } catch (error) {
-        res.status(500).json({ success: false, message: "Error contacting Google" });
+        // This is the error the frontend is seeing. It means Vercel failed to connect to Google.
+        // Check your SECRET_KEY on Google's console to ensure it is still active.
+        res.status(500).json({ success: false, message: "Error contacting Google for verification." });
     }
-    */
 });
-
 
 const PORT = process.env.PORT || 5001;
 
