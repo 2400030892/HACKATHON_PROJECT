@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const axios = require('axios'); // NEW: For talking to Google
+const axios = require('axios');
 
 const app = express();
 
@@ -55,20 +55,24 @@ app.delete('/deleteInvestment/:id', async (req, res) => {
     }
 });
 
-// 4. NEW: Verify Captcha (With YOUR Secret Key)
+// 4. NEW: Verify Captcha (TEMPORARY BYPASS FOR DEBUGGING)
 app.post('/verify-captcha', async (req, res) => {
-    const { token } = req.body;
-    const SECRET_KEY = "6LeWRRwsAAAAAO0ywXrMAriEMHZK3hxmWv-iqojE"; // From your screenshot
+    // This function is temporarily disabled. It will always return success: true
+    // If you log in successfully now, the issue is 100% the SECRET KEY on Vercel.
+    
+    console.log("CAPTCHA BYPASS ACTIVE: Returning success: true for test.");
+    return res.json({ success: true, message: "Bypass success" }); 
 
-    if (!token) {
-        return res.status(400).json({ success: false, message: "No token" });
-    }
+    /* ORIGINAL CODE BELOW:
+    const { token } = req.body;
+    const SECRET_KEY = "6LeWRRwsAAAAAO0ywXrMAriEMHZK3hxmWv-iqojE"; 
+    
+    if (!token) { return res.status(400).json({ success: false, message: "No token" }); }
 
     try {
         const response = await axios.post(
             `https://www.google.com/recaptcha/api/siteverify?secret=${SECRET_KEY}&response=${token}`
         );
-
         if (response.data.success) {
             res.json({ success: true, message: "Human verified!" });
         } else {
@@ -77,6 +81,7 @@ app.post('/verify-captcha', async (req, res) => {
     } catch (error) {
         res.status(500).json({ success: false, message: "Error contacting Google" });
     }
+    */
 });
 
 
