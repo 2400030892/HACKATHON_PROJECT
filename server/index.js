@@ -6,15 +6,18 @@ const axios = require('axios');
 
 const app = express();
 
+// --- GLOBAL MIDDLEWARE ---
+// Allows access from your deployed Netlify site
 app.use(cors());
 app.use(express.json());
 
-// Connect to MongoDB
+// --- MONGODB CONNECTION ---
+// MONGO_URI must be set in Vercel Environment Variables
 mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log("MongoDB Connected"))
     .catch(err => console.error("Connection Error:", err));
 
-// Schema
+// --- MONGODB SCHEMA ---
 const InvestmentSchema = new mongoose.Schema({
     fund: String,
     amount: Number,
@@ -22,9 +25,9 @@ const InvestmentSchema = new mongoose.Schema({
 });
 const Investment = mongoose.model('Investment', InvestmentSchema);
 
-// --- ROUTES ---
+// --- API ROUTES (CRUD) ---
 
-// 1. Get Investments
+// 1. GET: Fetch all investments
 app.get('/getInvestments', async (req, res) => {
     try {
         const data = await Investment.find();
@@ -34,7 +37,7 @@ app.get('/getInvestments', async (req, res) => {
     }
 });
 
-// 2. Add Investment
+// 2. POST: Add a new investment
 app.post('/addInvestment', async (req, res) => {
     try {
         const newInv = new Investment(req.body);
@@ -45,7 +48,7 @@ app.post('/addInvestment', async (req, res) => {
     }
 });
 
-// 3. Delete Investment
+// 3. DELETE: Remove an investment by ID
 app.delete('/deleteInvestment/:id', async (req, res) => {
     try {
         await Investment.findByIdAndDelete(req.params.id);
@@ -55,19 +58,18 @@ app.delete('/deleteInvestment/:id', async (req, res) => {
     }
 });
 
-// 4. NEW: Verify Captcha (TEMPORARY BYPASS FOR DEBUGGING)
-// 4. NEW: Verify Captcha (FINAL VERSION)
+// 4. POST: Verify Captcha (Uses Env Var)
 app.post('/verify-captcha', async (req, res) => {
     const { token } = req.body;
-    // REPLACE THE SECRET KEY HERE AGAIN. The slightest typo breaks this.
-    const SECRET_KEY = "6LeWRRwsAAAAAO0ywXrMAriEMHZK3hxmWv-iqojE"; 
+    // Uses the Environment Variable you must set in Vercel
+    const SECRET_KEY = process.env.RECAPTCHA_SECRET; 
 
-    if (!token) {
-        return res.status(400).json({ success: false, message: "No token" });
+    if (!token || !SECRET_KEY) {
+        return res.status(400).json({ success: false, message: "Missing token or secret key" });
     }
 
     try {
-        // Vercel sometimes rejects the connection if the secret is wrong.
+        // Send request to Google for verification
         const response = await axios.post(
             `https://www.google.com/recaptcha/api/siteverify?secret=${SECRET_KEY}&response=${token}`
         );
@@ -75,22 +77,22 @@ app.post('/verify-captcha', async (req, res) => {
         if (response.data.success) {
             res.json({ success: true, message: "Human verified!" });
         } else {
-            // If Google returns failure (e.g., scoring too low)
-            res.json({ success: false, message: "Captcha check failed: Bot detected." });
+            res.json({ success: false, message: "Bot detected!" });
         }
     } catch (error) {
-        // This is the error the frontend is seeing. It means Vercel failed to connect to Google.
-        // Check your SECRET_KEY on Google's console to ensure it is still active.
+        // This catches the network error (e.g., Vercel failing to reach Google)
         res.status(500).json({ success: false, message: "Error contacting Google for verification." });
     }
 });
 
+
+// --- SERVER EXPORT (FOR VERCEL) ---
 const PORT = process.env.PORT || 5001;
 
-// Only run the server if we are testing locally (not on Vercel)
+// Only run server if testing locally (not on Vercel)
 if (process.env.NODE_ENV !== 'production') {
     app.listen(PORT, () => console.log(`Server running on ${PORT}`));
 }
 
-// Export the app for Vercel
+// Export the app for Vercel Serverless Functions
 module.exports = app;
